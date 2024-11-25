@@ -1,0 +1,21 @@
+.{
+    .name = "doczy",
+    .version = "0.0.0",
+    .minimum_zig_version = "0.13.0",
+    .dependencies = .{
+        .zigdown = .{
+            .url = "https://github.com/jacobcrabill/zigdown/archive/960c97755cb02830ec351305e03113e61a4a3f42.tar.gz",
+            .hash = "12208dcb4b009c4dc8d329d0ccd4ef78cb671d04dab3bad8ddcedff7dcd1a1676ef4",
+        },
+        .zap = .{
+            .url = "https://github.com/zigzap/zap/archive/675c65b509d48c21a8d1fa4c5ec53fc407643a3b.tar.gz",
+            .hash = "12200223d76ab6cd32f75bc2e31463b0b429bb5b2b6fa4ce8f68dea494ca1ec3398b",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src/*",
+        "README.md",
+    },
+}
