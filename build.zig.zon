@@ -4,18 +4,15 @@
     .minimum_zig_version = "0.13.0",
     .dependencies = .{
         .zigdown = .{
-            .url = "https://github.com/jacobcrabill/zigdown/archive/960c97755cb02830ec351305e03113e61a4a3f42.tar.gz",
-            .hash = "12208dcb4b009c4dc8d329d0ccd4ef78cb671d04dab3bad8ddcedff7dcd1a1676ef4",
-        },
-        .zap = .{
-            .url = "https://github.com/zigzap/zap/archive/675c65b509d48c21a8d1fa4c5ec53fc407643a3b.tar.gz",
-            .hash = "12200223d76ab6cd32f75bc2e31463b0b429bb5b2b6fa4ce8f68dea494ca1ec3398b",
+            .url = "https://github.com/jacobcrabill/zigdown/archive/96f0d263a26d3af385a5fb45d6d4e4a588d5a7c9.tar.gz",
+            .hash = "1220beac63a3a0952cc80cb07958d8d35f39ce1c151309a7b4375147fe522bbc4ba5",
         },
     },
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src/*",
+        "docs/*",
         "README.md",
     },
 }

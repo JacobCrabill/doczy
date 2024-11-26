@@ -1,38 +1,29 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const zd = @import("zigdown");
-const zap = @import("zap");
 const md = @import("markdown.zig");
+const html = @import("html.zig");
 
-const flags = zd.flags; // Flags dependency inherited from Zigdown
-
-const os = std.os;
+const flags = zd.flags; // Flags arg-parsing dependency inherited from Zigdown
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const Dir = std.fs.Dir;
-const File = std.fs.File;
+
+const MimeMap = std.StringHashMap([]const u8);
+const RouteMap = std.StringHashMap(*const fn (r: *std.http.Server.Request) void);
+
+pub const std_options = .{ .log_level = .info };
+const log = std.log.scoped(.server);
+
+const server_addr = "127.0.0.1";
+const server_port = 8000;
+
+const favicon = @embedFile("imgs/zig-zero.png");
 
 fn print_usage() void {
     const stdout = std.io.getStdOut().writer();
     flags.help.printUsage(Doczy, null, 85, stdout) catch unreachable;
-}
-
-/// HTTP Request handler
-fn on_request(r: zap.Request) void {
-    if (r.path) |path| {
-        std.log.info("PATH: {s}", .{path});
-    }
-
-    if (r.query) |query| {
-        std.log.debug("QUERY: {s}", .{query});
-    }
-
-    if (r.body) |body| {
-        std.log.debug("BODY: {s}", .{body});
-    }
-
-    r.setStatus(.not_found);
-    r.sendBody("<html><body><h1>404 - File not found</h1></body></html>") catch return;
 }
 
 /// Command-line arguments definition for the Flags module
@@ -61,10 +52,24 @@ const Doczy = struct {
     };
 };
 
-const Source = struct {
+/// Contains all data to be shared by all request handlers
+const Context = struct {
+    alloc: Allocator = undefined,
     dir: Dir = undefined,
-    dir_path: []const u8 = undefined,
+    dir_path: []const u8 = ".",
     file: ?[]const u8 = null,
+    mimes: MimeMap = undefined,
+
+    pub fn init(alloc: Allocator) !Context {
+        return .{
+            .alloc = alloc,
+            .mimes = try initMimeMap(alloc),
+        };
+    }
+
+    pub fn deinit(ctx: *Context) void {
+        ctx.mimes.deinit();
+    }
 };
 
 pub fn main() !void {
@@ -76,51 +81,31 @@ pub fn main() !void {
     defer args.deinit();
     const params = flags.parse(&args, Doczy, .{}) catch std.process.exit(1);
 
-    var path_buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
+    var context = try Context.init(alloc);
+    defer context.deinit();
+    context.dir = std.fs.cwd();
 
-    var source: Source = .{};
-
-    if (params.root_file == null and params.root_directory == null) {
-        source.dir = std.fs.cwd();
-    } else if (params.root_directory) |dir| {
-        source.dir = try std.fs.cwd().openDir(dir, .{ .iterate = true });
-    } else if (params.root_file) |file| {
-        source.file = file;
-        const abs_file = try std.fs.realpath(file, &path_buf);
-        const root_dir_path = std.fs.path.dirname(abs_file) orelse return error.DirectoryNotFound;
-        source.dir_path = root_dir_path;
-        source.dir = try std.fs.openDirAbsolute(root_dir_path, .{ .iterate = true });
+    if (params.root_directory) |dir| {
+        context.dir_path = dir;
+        context.dir = try std.fs.cwd().openDir(dir, .{ .iterate = true });
     }
 
-    // Start the server
-    var listener = zap.Endpoint.Listener.init(
-        alloc,
-        .{
-            .port = 8000,
-            .on_request = on_request,
-            .public_folder = source.dir_path,
-            .log = true,
-            .max_clients = 1000,
-            .max_body_size = 100 * 1024 * 1024,
-        },
-    );
-    defer listener.deinit();
+    if (params.root_file) |file| {
+        context.file = file;
+    }
 
-    var ep_markdown = @import("markdown.zig").init(alloc, "/", source.dir);
-    defer ep_markdown.deinit();
+    // Parse the server address and start the server
+    const address = std.net.Address.parseIp(server_addr, server_port) catch unreachable;
+    var server = try address.listen(.{ .reuse_address = true });
+    defer server.deinit();
 
-    // register endpoints with the listener
-    try listener.register(ep_markdown.endpoint());
+    md.init(alloc, context.dir);
 
-    try listener.listen();
+    var t_accept = try std.Thread.spawn(.{}, serve, .{ &context, &server });
+    defer t_accept.join();
 
-    std.log.info("Listening on 0.0.0.0:8000", .{});
-
-    const t = try std.Thread.spawn(.{}, serve, .{});
-    defer t.join();
-
-    if (source.file) |file| {
-        const url = try std.fmt.allocPrint(alloc, "http://localhost:8000/{s}", .{file});
+    if (context.file) |file| {
+        const url = try std.fmt.allocPrint(alloc, "http://localhost:{d}/{s}", .{ server_port, file });
         defer alloc.free(url);
         const argv = &[_][]const u8{ "xdg-open", url };
         var proc = std.process.Child.init(argv, alloc);
@@ -128,62 +113,114 @@ pub fn main() !void {
     }
 }
 
-fn serve() void {
-    zap.start(.{
-        .threads = 2,
-        .workers = 1,
+/// Run the HTTP server forever
+fn serve(context: *Context, server: *std.net.Server) !void {
+    while (true) {
+        const connection = try server.accept();
+        _ = std.Thread.spawn(.{}, accept, .{ context, connection }) catch |err| {
+            std.log.err("unable to accept connection: {s}", .{@errorName(err)});
+            connection.stream.close();
+            continue;
+        };
+    }
+}
+
+/// Accept a new connection request
+fn accept(
+    context: *const Context,
+    connection: std.net.Server.Connection,
+) void {
+    defer connection.stream.close();
+
+    var read_buffer: [8000]u8 = undefined;
+    var server = std.http.Server.init(connection, &read_buffer);
+    while (server.state == .ready) {
+        var request = server.receiveHead() catch |err| switch (err) {
+            error.HttpConnectionClosing => return,
+            else => {
+                std.log.err("closing http connection: {s}", .{@errorName(err)});
+                return;
+            },
+        };
+        serveRequest(&request, context) catch |err| {
+            std.log.err("unable to serve {s}: {s}", .{ request.head.target, @errorName(err) });
+            return;
+        };
+    }
+}
+
+/// Serve an HTTP request
+fn serveRequest(request: *std.http.Server.Request, context: *const Context) !void {
+    const path = request.head.target;
+
+    if (std.mem.endsWith(u8, path, ".md")) {
+        md.renderMarkdown(request);
+        // try serveDocsFile(request, context, path, "text/html");
+    } else if (std.mem.indexOf(u8, path, "favicon")) |_| {
+        try request.respond(favicon, .{
+            .extra_headers = &.{
+                .{ .name = "content-type", .value = "text/png" },
+            },
+        });
+    } else {
+        serveFile(request, context) catch {
+            try request.respond(html.error_page, .{
+                .extra_headers = &.{
+                    .{ .name = "content-type", .value = "text/html" },
+                    cache_control_header,
+                },
+            });
+        };
+    }
+}
+
+/// Tell the browser not to cache the result, so that a simple page refresh
+/// will properly show any changes to that page
+const cache_control_header: std.http.Header = .{
+    .name = "cache-control",
+    .value = "max-age=0, must-revalidate",
+};
+
+fn serveFile(
+    request: *std.http.Server.Request,
+    context: *const Context,
+) !void {
+    std.debug.assert(std.mem.startsWith(u8, request.head.target, "/"));
+    const path = request.head.target[1..];
+
+    const ftype: []const u8 = std.fs.path.extension(path);
+    const content_type = context.mimes.get(ftype) orelse "text/plain";
+
+    const file_contents = try context.dir.readFileAlloc(context.alloc, path, 10 * 1024 * 1024);
+    defer context.alloc.free(file_contents);
+
+    try request.respond(file_contents, .{
+        .extra_headers = &.{
+            .{ .name = "content-type", .value = content_type },
+            cache_control_header,
+        },
     });
 }
 
-/// Load all *.md files in the given directory; append their absolute paths to the 'slides' array
-/// dir:     The directory to search
-/// recurse: If true, also recursively search all child directories of 'dir'
-/// slides:  The array to append all slide filenames to
-fn loadSlidesFromDirectory(alloc: Allocator, dir: Dir, recurse: bool, slides: *ArrayList([]const u8)) !void {
-    var iter = dir.iterate();
-    while (try iter.next()) |entry| {
-        switch (entry.kind) {
-            .file => {
-                var path_buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
-                const realpath = dir.realpath(entry.name, &path_buf) catch |err| {
-                    std.debug.print("Error loading slide: {s}\n", .{entry.name});
-                    return err;
-                };
-                if (std.mem.eql(u8, ".md", std.fs.path.extension(realpath))) {
-                    std.debug.print("Adding slide: {s}\n", .{realpath});
-                    const slide: []const u8 = try alloc.dupe(u8, realpath);
-                    try slides.append(slide);
-                }
-            },
-            .directory => {
-                if (recurse) {
-                    const child_dir: Dir = try dir.openDir(entry.name, .{ .iterate = true });
-                    try loadSlidesFromDirectory(alloc, child_dir, recurse, slides);
-                }
-            },
-            else => {},
-        }
-    }
-}
+/// Setup our basic MIME types map
+pub fn initMimeMap(alloc: Allocator) !MimeMap {
+    var mimes = MimeMap.init(alloc);
 
-/// Load a list of slides to present from a single text file
-fn loadSlidesFromFile(alloc: Allocator, dir: Dir, file: File, slides: *ArrayList([]const u8)) !void {
-    const buf = try file.readToEndAlloc(alloc, 1_000_000);
-    defer alloc.free(buf);
+    // Text Files
+    try mimes.put(".html", "text/html");
+    try mimes.put(".css", "text/css");
 
-    var lines = std.mem.split(u8, buf, "\n");
-    while (lines.next()) |name| {
-        if (name.len < 1) break;
+    // Scripts / executable code
+    try mimes.put(".js", "application/javascript");
+    try mimes.put(".wasm", "application/wasm");
 
-        var path_buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
-        const realpath = dir.realpath(name, &path_buf) catch |err| {
-            std.debug.print("Error loading slide: {s}\n", .{name});
-            return err;
-        };
-        if (std.mem.eql(u8, ".md", std.fs.path.extension(realpath))) {
-            std.debug.print("Adding slide: {s}\n", .{realpath});
-            const slide: []const u8 = try alloc.dupe(u8, realpath);
-            try slides.append(slide);
-        }
-    }
+    // Image Files
+    try mimes.put(".jpg", "image/jpeg");
+    try mimes.put(".jpeg", "image/jpeg");
+    try mimes.put(".JPG", "image/jpeg");
+    try mimes.put(".JPEG", "image/jpeg");
+    try mimes.put(".png", "image/png");
+    try mimes.put(".PNG", "image/png");
+
+    return mimes;
 }

@@ -43,11 +43,7 @@ pub fn build(b: *std.Build) !void {
     const zigdown = b.dependency("zigdown", .{ .optimize = optimize, .target = target });
     const zigdown_dep = Dependency{ .name = "zigdown", .module = zigdown.module("zigdown") };
 
-    // Zap
-    const zap = b.dependency("zap", .{ .optimize = optimize, .target = target });
-    const zap_dep = Dependency{ .name = "zap", .module = zap.module("zap") };
-
-    var dep_array = [_]Dependency{ zigdown_dep, zap_dep };
+    var dep_array = [_]Dependency{zigdown_dep};
     const deps: []Dependency = &dep_array;
 
     const exe_opts = BuildOpts{

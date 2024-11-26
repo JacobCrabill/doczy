@@ -1,61 +1,27 @@
-/* -------- Common Website Styling -------- */
-
-@font-face {
-  font-family: "mononoki";
-  src: url("https://github.com/madmalik/mononoki/raw/refs/heads/main/export/mononoki-Regular.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "mononoki";
-  src: url("https://github.com/madmalik/mononoki/raw/refs/heads/main/export/mononoki-Bold.ttf") format("truetype");
-  font-weight: bold;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "mononoki";
-  src: url("https://github.com/madmalik/mononoki/raw/refs/heads/main/export/mononoki-Italic.ttf") format("truetype");
-  font-weight: normal;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: "mononoki";
-  src: url("https://github.com/madmalik/mononoki/raw/refs/heads/main/export/mononoki-BoldItalic.ttf") format("truetype");
-  font-weight: bold;
-  font-style: italic;
-  font-display: swap;
-}
+/* -------- Markdown Render Styling -------- */
 
 html, body {
   height: fit-content;
+  overflow-wrap: break-word;
 }
 
-:root {
-  --dark-bg: 28, 28, 34;
-  --bg-alpha: 0.7;
-  --black: #000000;
-  --white: #FFFFFF;
-  --bg-color-rgb: #1C1C22;
-  --bg-color-rgba: rgba(var(--dark-bg), var(--bg-alpha));
-
+/* Set the basic style: bg color, fg color, typeface */
+body {
   --color-rosewater: #f2d5cf;
   --color-flamingo: #eebebe;
   --color-pink: #f4b8e4;
-  --color-mauve: #ca9ee6;
+  --color-mauve: #cda1e6;
   --color-red: #e78284;
   --color-maroon: #ea999c;
   --color-peach: #ef9f76;
-  --color-yellow: #e5c890;
-  --color-green: #a6d189;
+  --color-yellow: #eaca60;
+  --color-green: #96dd87;
   --color-teal: #81c8be;
   --color-sky: #99d1db;
   --color-sapphire: #85c1dc;
-  --color-blue: #8caaee;
+  --color-blue: #66aaff;
   --color-lavender: #babbf1;
-  --color-text: #c6d0f5;
+  --color-text: #d6e0ff;
   --color-subtext1: #b5bfe2;
   --color-subtext0: #a5adce;
   --color-overlay2: #949cbb;
@@ -67,82 +33,172 @@ html, body {
   --color-base: #303446;
   --color-mantle: #292c3c;
   --color-crust: #232634;
-}
 
-body {
   background-image: none;
-  background-color: #00000000;
+  background-color: var(--color-base);
 
-  min-height: 100%;
-  margin: 0;
+  text-align: left;
+  font-family: "Ubuntu Mono";
+  font-size: 20px;
+  color: var(--color-text);
 
-  text-align: center;
-  font-family: Nova Flat, Ubuntu, Arial;
-  color: #ffffff;
+  --padding-vertical: clamp(1.5em, 5vh, 2.5em);
+  margin: 0 auto;
+  max-width: min(90ch, 100%);
+  min-height: calc(100% - 2 * var(--padding-vertical));
+  padding: var(--padding-vertical) clamp(1.5em, 5vw, 2.5em);
 }
 
-/* Play nice with DarkReader: turn off background replacement */
-[data-darkreader-mode="dynamic"] body {
-  background-image: none;
-  background-color: #00000000;
+*::selection {
+    background: var(--color-blue);
+    color: var(--color-base);
 }
 
+/* Title-style header (H1) */
 .header {
   text-align: center;
   font-size: 24px;
-  padding: 12px;
+  font-weight: bold;
+  padding: 20px;
 }
 
-.img_back {
-  background-image:
-    linear-gradient( rgba(var(--dark-bg), var(--bg-alpha)),
-                     rgba(var(--dark-bg), var(--bg-alpha)) ),
-    url('/images/DSC03265-2-export.jpg');
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-attachment: fixed;
-  background-position: center;
-  position: fixed;
-  width: 100%;
-  height: 100%;
-  left: 0;
-  top: 0;
-  z-index: -1;
-}
-
-#navbar {
-  position: sticky;
-  float: left;
-  top: 0;
-  overflow: hidden;
-  width: 100%;
-  padding: 0;
-  margin: 0;
-  background-color: #222;
-}
-
-#navbar li {
-  display: inline-block;
-  text-align: center;
-  padding: 0;
-}
-
-#navbar a {
-  float: left;
+/* Basic centering of simple elements */
+.center {
   display: block;
-  color: #f2f2f2;
-  text-align: center;
-  text-decoration: none;
-  font-size: 17px;
-  padding: 12px 14px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
 }
 
-#navbar a:hover {
-  background-color: #ddd;
-  color: black;
+h1 {
+  color: var(--color-blue);
+  margin-top: 20px;
+  margin-bottom: 0px;
 }
 
-#navbar a.active {
-  background-color: #04AA6D;
+h2 {
+  color: var(--color-peach);
+  margin-top: 20px;
+  margin-bottom: 0px;
+}
+
+h3 {
+  color: var(--color-green);
+  margin-top: 16px;
+  margin-bottom: 0px;
+}
+
+h4 {
+  color: var(--color-mauve);
+  margin-top: 16px;
+  margin-bottom: 0px;
+}
+
+p {
+  margin-top: 0px;
+  margin-bottom: 12px;
+}
+
+ol, ul {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+code {
+  background-color: var(--color-mantle);
+  color: var(--color-lavender); /* #c0b0f0; */
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.directive {
+  border: 4px solid #e44026;
+  border-radius: 10px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 20px;
+  background-color: var(--color-red); /* #ff5860; */
   color: white;
+}
+
+/* ------------------------------------
+ *         Syntax Highlighting
+ * ------------------------------------ */
+
+/**
+ * TODO: keyword, constant, identifier, function, ...
+ * Currently defined in syntax.zig; should instead define
+ * classes here that get referenced there
+ */
+
+.code_block {
+  color: var(--color-lavender); /* #c0b0f0; */
+  font-family: monospace;
+  background-color: var(--color-mantle); /* #424050; */
+  padding: 0px 12px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+tr {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+td {
+  padding-left: 6px;
+}
+
+/**
+ * Bits from a a very nicely styled blog I found:
+ * https://git.sr.ht/~ashie/blog/tree/master/item/assets/main.scss
+ */
+
+a {
+    color: var(--color-sky);
+    text-decoration: none;
+    padding: 0.05em;
+
+    &:visited {
+        color: var(--color-mauve);
+
+        &:hover {
+            background: var(--color-mauve);
+        }
+    }
+
+    &:hover {
+        text-decoration: underline;
+        background: var(--color-sky);
+        color: var(--color-base);
+    }
+}
+
+blockquote {
+    background: var(--color-crust);
+    color: var(--color-subtext1);
+    margin: 0;
+    margin-left: 0.75em;
+    max-width: fit-content;
+    padding: 0.5em;
+    font-style: italic;
+    margin: 0;
+
+    i {
+      font-style: normal;
+    }
+}
+
+code {
+    padding: 0.1ch 0.5ch;
+    background: var(--color-crust);
+}
+
+li {
+    margin: 0.25em 0;
+}
+
+ul sup {
+    line-height: 0;
+    vertical-align: super;
 }
