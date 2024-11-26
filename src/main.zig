@@ -19,8 +19,6 @@ const log = std.log.scoped(.server);
 const server_addr = "127.0.0.1";
 const server_port = 8000;
 
-const favicon = @embedFile("imgs/zig-zero.png");
-
 fn print_usage() void {
     const stdout = std.io.getStdOut().writer();
     flags.help.printUsage(Doczy, null, 85, stdout) catch unreachable;
@@ -157,9 +155,15 @@ fn serveRequest(request: *std.http.Server.Request, context: *const Context) !voi
         md.renderMarkdown(request);
         // try serveDocsFile(request, context, path, "text/html");
     } else if (std.mem.indexOf(u8, path, "favicon")) |_| {
-        try request.respond(favicon, .{
+        try request.respond(html.favicon, .{
             .extra_headers = &.{
                 .{ .name = "content-type", .value = "text/png" },
+            },
+        });
+    } else if (std.mem.eql(u8, path, "/style.css")) {
+        try request.respond(html.style_css, .{
+            .extra_headers = &.{
+                .{ .name = "content-type", .value = "text/css" },
             },
         });
     } else {
