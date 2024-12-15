@@ -37,7 +37,7 @@ pub fn renderMarkdown(r: *std.http.Server.Request) void {
     if (!std.mem.endsWith(u8, path, ".md")) {
         return;
     }
-    std.log.info("Rendering file: {s}\n", .{path});
+    std.log.debug("Rendering file: {s}", .{path});
 
     const md_html = renderMarkdownImpl(path) orelse {
         sendErrorPage(r, .internal_server_error);
