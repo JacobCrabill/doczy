@@ -105,8 +105,14 @@ pub fn main() !void {
     if (context.file) |file| {
         const url = try std.fmt.allocPrint(alloc, "http://localhost:{d}/{s}", .{ server_port, file });
         defer alloc.free(url);
-        const argv = &[_][]const u8{ "xdg-open", url };
-        var proc = std.process.Child.init(argv, alloc);
+        var proc: std.process.Child = undefined;
+        if (builtin.os.tag == .windows) {
+            const argv = &[_][]const u8{ "start", url };
+            proc = std.process.Child.init(argv, alloc);
+        } else {
+            const argv = &[_][]const u8{ "xdg-open", url };
+            proc = std.process.Child.init(argv, alloc);
+        }
         try proc.spawn();
     }
 }
