@@ -17,7 +17,7 @@ pub const std_options = .{ .log_level = .info };
 const log = std.log.scoped(.server);
 
 const server_addr = "127.0.0.1";
-const server_port = 8000;
+const default_server_port = 8000;
 
 fn print_usage() void {
     const stdout = std.io.getStdOut().writer();
@@ -39,14 +39,17 @@ const Doczy = struct {
         \\All paths will either be relative to this directory, or relative to the
         \\directory of the current file.
         ,
+        .port = "Localhost port to serve on",
     };
 
     root_file: ?[]const u8 = null,
     root_directory: ?[]const u8 = null,
+    port: u16 = default_server_port,
 
     pub const switches = .{
         .root_file = 'f',
         .root_directory = 'd',
+        .port = 'p',
     };
 };
 
@@ -93,7 +96,7 @@ pub fn main() !void {
     }
 
     // Parse the server address and start the server
-    const address = std.net.Address.parseIp(server_addr, server_port) catch unreachable;
+    const address = std.net.Address.parseIp(server_addr, params.port) catch unreachable;
     var server = try address.listen(.{ .reuse_address = true });
     defer server.deinit();
 
@@ -103,7 +106,7 @@ pub fn main() !void {
     defer t_accept.join();
 
     if (context.file) |file| {
-        const url = try std.fmt.allocPrint(alloc, "http://localhost:{d}/{s}", .{ server_port, file });
+        const url = try std.fmt.allocPrint(alloc, "http://localhost:{d}/{s}", .{ params.port, file });
         defer alloc.free(url);
         var proc: std.process.Child = undefined;
         if (builtin.os.tag == .windows) {
