@@ -1,6 +1,10 @@
 # Doczy: Markdown Documentation Browser
 
-> Instantly view your Markdown docs in the browser!
+> [!IMPORTANT]
+> This project is deprecated, as all functionality is now included in
+> [zigdown](https://github.com/JacobCrabill/zigdown) with the 'serve' command.
+
+**Instantly view your Markdown docs in the browser!**
 
 Looking for a better way to browse your Markdown docs quickly and easily without jumping through the
 hoops of setting up [mdBook](https://rust-lang.github.io/mdBook/),
